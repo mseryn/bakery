@@ -1,0 +1,21 @@
+# The virtual environment, wherever it was made.
+bin/
+include/
+lib/
+lib64
+pyvenv.cfg
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# One person's answers, not source. Never commit a working database: it is
+# hours of judgements about a particular corpus, and it is nobody else's.
+*.sqlite
+*.sqlite3
+*.db
+
+# Written output. Regenerated from the database by `bakery.py --bake`.
+baked/

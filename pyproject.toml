@@ -1,0 +1,32 @@
+# Settings for the bakery. See parbake/pyproject.toml for the same pattern.
+[project]
+name = "bakery"
+version = "0.2.0"
+description = "Finishes par-baked Croissant files by asking a person the questions they cannot answer."
+# 3.11 for hashlib.file_digest, which saves hand-rolling a block-reading loop.
+requires-python = ">=3.11"
+# Not installable as a package: the modules are run in place, and this list is a
+# record of what has to be importable rather than something pip reads from here.
+dependencies = [
+    "sqlalchemy>=2.0",      # the record of machines, files and what a person said
+    "textual>=0.60",        # the full-screen interface for working through it
+    # parbake's, not the bakery's -- but parbake_link.py imports parbake, so
+    # nothing here starts without them.
+    "pandas",
+    "psutil",
+]
+
+[project.optional-dependencies]
+# Drivers for the bigger deployments. SQLite, the default, needs nothing.
+postgres = ["psycopg[binary]>=3.1"]
+mysql = ["pymysql>=1.1"]
+# The real Croissant validator. Not needed to run the bakery, but the tests that
+# check a finished file validates are skipped without it, and those are the two
+# tests that prove the whole point of the pair.
+validate = ["mlcroissant>=1.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The tests import bake_croissants, which lives here rather than in tests/.
+pythonpath = ["."]
+python_files = ["test_*.py"]
