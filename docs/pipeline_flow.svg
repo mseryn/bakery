@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" role="img" aria-label="bakery reads parbake output with importing.py and finished work with seeding.py into a database of machines, datasets, files and answers. A person working in bakery.py reads questions and offers from the database and writes confirmed answers back. baking.py reads the database and writes finished Croissants, and notes.py reads the notes in them.">
+<style>
+  .node { fill: #FFFFFF; stroke: #9AA6B2; stroke-width: 1; }
+  .group { fill: #E9EDF2; stroke: #9AA6B2; stroke-width: 1; }
+  .region, .person { fill: #F2F4F7; stroke: #2656A6; stroke-width: 1.25; stroke-dasharray: 7 5; }
+  .region-behind { fill: #F2F4F7; stroke: #9AA6B2; stroke-width: 1; stroke-dasharray: 7 5; }
+  .table-row { fill: #FFFFFF; stroke: #C9D1D9; stroke-width: 1; }
+  .folder { fill: none; stroke: #9AA6B2; stroke-width: 1; stroke-dasharray: 2 4; }
+  .file { fill: #FFFFFF; stroke: #C9D1D9; stroke-width: 1; }
+  .edge { fill: none; stroke: #5A6673; stroke-width: 1.25; }
+  .edge-accent { stroke: #2656A6; }
+  .edge-dashed { stroke-dasharray: 5 4; }
+  .t-name { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace; font-size: 12px; font-weight: 600; fill: #17212C; }
+  .t-title { font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 600; fill: #17212C; }
+  .t-sub, .t-label { font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 11px; fill: #5A6673; }
+  .t-file { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace; font-size: 11px; fill: #17212C; }
+  .t-table { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; fill: #17212C; }
+  .t-cluster { font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; fill: #5A6673; }
+  .t-region { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 500; fill: #2656A6; }
+  .t-folder { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace; font-size: 12px; font-weight: 600; fill: #17212C; }
+  .t-label-accent { font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 11px; fill: #2656A6; }
+  .t-key { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 600; fill: #2656A6; }
+  .m-ink path { fill: #5A6673; }
+  .m-accent path { fill: #2656A6; }
+</style>
+<rect width="100%" height="100%" fill="#F2F4F7"/>
+          <defs>
+            <marker id="arrow" class="m-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="arrow-accent" class="m-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <!-- inputs -->
+          <rect class="node" x="16" y="220" width="150" height="100" rx="3"/>
+          <text class="t-title" x="91" y="244" text-anchor="middle">parbake output</text>
+          <text class="t-file" x="91" y="266" text-anchor="middle">parbaked_croissants/</text>
+          <text class="t-file" x="91" y="281" text-anchor="middle">*.parbaked.json</text>
+          <text class="t-sub" x="91" y="303" text-anchor="middle">.txt and .md: recorded only</text>
+
+          <rect class="node" x="190" y="240" width="160" height="60" rx="3"/>
+          <text class="t-name" x="270" y="262" text-anchor="middle">importing.py</text>
+          <text class="t-sub" x="270" y="278" text-anchor="middle">--import: files, columns,</text>
+          <text class="t-sub" x="270" y="291" text-anchor="middle">measurements, machine guess</text>
+          <line class="edge" x1="166" y1="270" x2="188" y2="270" marker-end="url(#arrow)"/>
+          <line class="edge" x1="350" y1="270" x2="398" y2="270" marker-end="url(#arrow)"/>
+
+          <rect class="node" x="16" y="370" width="150" height="120" rx="3"/>
+          <text class="t-title" x="91" y="394" text-anchor="middle">finished work</text>
+          <text class="t-file" x="91" y="416" text-anchor="middle">*.croissant.json</text>
+          <text class="t-file" x="91" y="431" text-anchor="middle">*_field_dictionary.csv</text>
+          <text class="t-file" x="91" y="446" text-anchor="middle">*_documentation*.md</text>
+          <text class="t-sub" x="91" y="470" text-anchor="middle">work already done by hand</text>
+
+          <rect class="node" x="190" y="400" width="160" height="60" rx="3"/>
+          <text class="t-name" x="270" y="422" text-anchor="middle">seeding.py</text>
+          <text class="t-sub" x="270" y="438" text-anchor="middle">--seed: answers, units,</text>
+          <text class="t-sub" x="270" y="451" text-anchor="middle">hardware; none confirmed</text>
+          <line class="edge" x1="166" y1="430" x2="188" y2="430" marker-end="url(#arrow)"/>
+          <line class="edge" x1="350" y1="430" x2="398" y2="430" marker-end="url(#arrow)"/>
+
+          <rect class="node" x="16" y="560" width="334" height="60" rx="3"/>
+          <text class="t-name" x="183" y="582" text-anchor="middle">parbake_link.py</text>
+          <text class="t-sub" x="183" y="598" text-anchor="middle">parbake's markers, output folder names and Markdown renderer,</text>
+          <text class="t-sub" x="183" y="611" text-anchor="middle">used by five modules; nothing else reaches into parbake</text>
+
+          <!-- database -->
+          <rect class="group" x="380" y="40" width="280" height="460" rx="4"/>
+          <text class="t-name" x="400" y="64">database.py · models.py</text>
+          <text class="t-sub" x="400" y="80">SQLite by default; MySQL or PostgreSQL by URL</text>
+
+          <text class="t-cluster" x="400" y="106">THE MACHINE</text>
+          <rect class="table-row" x="400" y="112" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="128">machines</text>
+          <text class="t-sub" x="630" y="128" text-anchor="end">by name</text>
+          <rect class="table-row" x="400" y="142" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="158">machine_iterations</text>
+          <text class="t-sub" x="630" y="158" text-anchor="end">hardware, by date</text>
+          <rect class="table-row" x="400" y="172" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="188">machine_partitions</text>
+          <text class="t-sub" x="630" y="188" text-anchor="end">per kind of node</text>
+
+          <text class="t-cluster" x="400" y="222">THE DATA</text>
+          <rect class="table-row" x="400" y="228" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="244">datasets</text>
+          <text class="t-sub" x="630" y="244" text-anchor="end">MACHINE_KIND</text>
+          <rect class="table-row" x="400" y="258" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="274">source_files</text>
+          <text class="t-sub" x="630" y="274" text-anchor="end">one par-baked file</text>
+          <rect class="table-row" x="400" y="288" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="304">file_fields</text>
+          <text class="t-sub" x="630" y="304" text-anchor="end">columns, measured</text>
+          <rect class="table-row" x="400" y="318" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="334">derived_files</text>
+          <text class="t-sub" x="630" y="334" text-anchor="end">.txt, .md, not read</text>
+
+          <text class="t-cluster" x="400" y="368">WHAT A PERSON SAID</text>
+          <rect class="table-row" x="400" y="374" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="390">field_docs</text>
+          <text class="t-sub" x="630" y="390" text-anchor="end">per dataset and column</text>
+          <rect class="table-row" x="400" y="404" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="420">dataset_answers</text>
+          <text class="t-sub" x="630" y="420" text-anchor="end">licence, citation</text>
+          <rect class="table-row" x="400" y="434" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="450">enumerations</text>
+          <text class="t-sub" x="630" y="450" text-anchor="end">decoding tables</text>
+          <rect class="table-row" x="400" y="464" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="480">enumeration_values</text>
+          <text class="t-sub" x="630" y="480" text-anchor="end">code and meaning</text>
+
+          <!-- the person -->
+          <rect class="person" x="740" y="40" width="344" height="460" rx="6"/>
+          <text class="t-region" x="754" y="60">a person, in bakery.py</text>
+
+          <rect class="node" x="760" y="74" width="304" height="44" rx="3"/>
+          <text class="t-name" x="776" y="93">outstanding.py</text>
+          <text class="t-sub" x="776" y="109">what is unanswered; offers from other datasets</text>
+
+          <rect class="node" x="760" y="134" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="156">files</text>
+          <text class="t-sub" x="820" y="156">queue, least finished first</text>
+
+          <rect class="node" x="760" y="178" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="200">machine</text>
+          <text class="t-sub" x="840" y="200">confirm it; change it</text>
+          <text class="t-key" x="1050" y="200" text-anchor="end">M</text>
+
+          <rect class="node" x="760" y="222" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="244">columns</text>
+          <text class="t-sub" x="840" y="244">measurements beside each question</text>
+
+          <rect class="node" x="760" y="266" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="288">review</text>
+          <text class="t-sub" x="840" y="288">every column, editable</text>
+          <text class="t-key" x="1050" y="288" text-anchor="end">a</text>
+
+          <rect class="node" x="760" y="310" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="332">copy in</text>
+          <text class="t-sub" x="840" y="332">from another dataset; you choose</text>
+          <text class="t-key" x="1050" y="332" text-anchor="end">c</text>
+
+          <rect class="node" x="760" y="354" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="376">notes</text>
+          <text class="t-sub" x="840" y="376">everything flagged for later</text>
+          <text class="t-key" x="1050" y="376" text-anchor="end">n</text>
+
+          <text class="t-sub" x="776" y="420">transfer.py moves a file between machines</text>
+          <text class="t-sub" x="776" y="434">and copies answers between datasets.</text>
+          <text class="t-sub" x="776" y="456">Every answer is written as it is given.</text>
+
+          <line class="edge" x1="660" y1="240" x2="738" y2="240" marker-end="url(#arrow)"/>
+          <text class="t-label" x="700" y="256" text-anchor="middle">questions,</text>
+          <text class="t-label" x="700" y="269" text-anchor="middle">offers</text>
+
+          <line class="edge edge-accent" x1="740" y1="400" x2="662" y2="400" marker-end="url(#arrow-accent)"/>
+          <text class="t-label-accent" x="700" y="416" text-anchor="middle">confirmed</text>
+          <text class="t-label-accent" x="700" y="429" text-anchor="middle">answers</text>
+
+          <!-- output -->
+          <line class="edge" x1="520" y1="500" x2="520" y2="558" marker-end="url(#arrow)"/>
+          <text class="t-label" x="530" y="533">reads</text>
+
+          <rect class="node" x="380" y="560" width="280" height="60" rx="3"/>
+          <text class="t-name" x="520" y="582" text-anchor="middle">baking.py</text>
+          <text class="t-sub" x="520" y="598" text-anchor="middle">--bake, or b: a Croissant per file and per dataset,</text>
+          <text class="t-sub" x="520" y="611" text-anchor="middle">marked unfinished until nothing is left</text>
+
+          <rect class="folder" x="740" y="530" width="344" height="170" rx="6"/>
+          <text class="t-file" x="754" y="550">&lt;out&gt;/</text>
+          <text class="t-file" x="754" y="580">&lt;file&gt;.baked.json   .baked.md</text>
+          <text class="t-sub" x="754" y="595">one date range, with a sha256</text>
+          <text class="t-file" x="754" y="620">&lt;DATASET&gt;.baked.json   .baked.md</text>
+          <text class="t-sub" x="754" y="635">the series, as a cr:FileSet</text>
+          <line class="edge" x1="660" y1="590" x2="738" y2="590" marker-end="url(#arrow)"/>
+          <text class="t-label" x="700" y="582" text-anchor="middle">writes</text>
+
+          <rect class="node" x="380" y="650" width="280" height="50" rx="3"/>
+          <text class="t-name" x="520" y="671" text-anchor="middle">notes.py</text>
+          <text class="t-sub" x="520" y="687" text-anchor="middle">--notes: every NOTE: in a directory of Croissants</text>
+          <line class="edge" x1="740" y1="675" x2="662" y2="675" marker-end="url(#arrow)"/>
+          <text class="t-label" x="700" y="668" text-anchor="middle">reads</text>
+        </svg>

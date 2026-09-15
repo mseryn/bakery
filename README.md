@@ -96,6 +96,8 @@ Passwords are not printed.
 | machine | `enter` on a file with no machine | the machine question, with its evidence |
 | columns | `enter` on a file with a machine | one column at a time |
 | review | `a` | every column of a file, answered or not |
+| change machine | `m` on review, `M` on the file list | move a file to another machine, answers and all |
+| copy answers in | `c` on review or the file list | copy another dataset's answers for matching columns |
 | notes | `n` | everything flagged to come back to |
 | machines | `m` | each system, its iterations and its hardware |
 
@@ -139,6 +141,51 @@ question being typed and nothing else.
 and becomes unreachable. The review screen lists every column of a file with its
 state, type, unit, whether it carries a note, and its description; `enter` on any
 row reopens that column with its values filled in for editing.
+
+
+## Correcting in bulk
+
+**Changing a file's machine.** `m` on the review screen, or `M` on the file list,
+opens the machine question with the current machine filled in. The file moves to
+`<MACHINE>_<KIND>` for the machine chosen, and its answers follow it:
+
+- If it was the only file in its old dataset, the answers move and the emptied
+  dataset is removed.
+- If other files remain there, the answers are copied, and those files keep
+  theirs.
+- Where the new dataset already has a confirmed, complete answer, that answer is
+  kept, and the report lists the columns where the two differed.
+- A decoding-table link moves to the new machine's table of the same name, or is
+  dropped and listed if there is none.
+- The file's iteration is re-dated against the new machine.
+
+**Copying answers from another dataset.** `c` opens a list of every other dataset,
+sorted by how many of this file's columns it has confirmed answers for. Choosing
+one shows what the copy would do before writing anything:
+
+    From POLARIS_MACHINESTATUS into AURORA_MACHINESTATUS
+
+      columns answered in both      10
+        will be filled              0
+        already the same            7
+        differ, you choose          3
+
+`ctrl+s` copies. Each difference is then shown with both versions: `u` uses the
+copy, `k` keeps the current answer, `a` and `x` do the same for all remaining.
+`esc` abandons the copy, and nothing is written.
+
+A copy carries each column's description, type, unit, note and decoding-table
+link, and the dataset-level answers (licence, citation, keywords, responsible-AI
+blocks). Rules:
+
+- Only answers confirmed in the source are copied, so an unreviewed seeded answer
+  does not become confirmed by being copied.
+- A gap -- a column unanswered, unconfirmed or incomplete in the target -- is
+  filled. Parts the source leaves empty keep what the target had.
+- A difference replaced by choice takes the source's answer exactly.
+- Copied answers are confirmed and recorded as `copied from <dataset>`.
+- A decoding-table link is copied to the target machine's table of the same name,
+  or left out and listed.
 
 
 ## What is recorded, and at which level
@@ -378,19 +425,53 @@ know what that version did to it.
 Current schema version: 2. Version 2 added `field_docs.note`.
 
 
-## Layout
+## Files and artifacts
 
-    parbake_link.py      where parbake lives, and what is borrowed from it
-    models.py            the tables, and what is true at which level
-    database.py          opening one, and bringing an older one forward
-    importing.py         reading a parbake output directory in
-    seeding.py           reading finished work in
-    outstanding.py       what is unanswered, and what can be offered instead
-    baking.py            writing it back out, in both shapes
-    notes.py             finding every note left for later
-    bakery.py            the interface, and the command line
-    questions.py         the dataset-level question catalogue
-    bake_croissants.py   the older file-in, file-out path, still working
+Paths are relative to this repository, except Input, Output and Working state
+rows, which are where a run finds or writes them. Angle brackets mark a name
+that varies. parbake's files are listed in parbake's README.
+
+Program: run from the command line. Module: imported by other files. Test: run by pytest. Test fixture: data a test reads. Documentation and Configuration: in the repository. Input: read from elsewhere. Output: written by a run. Working state: written during a run and not committed.
+
+| Path | Category | Purpose |
+|---|---|---|
+| `bakery.py` | Program | Textual interface and command line: import, seed, work through files, write Croissants, list notes. |
+| `bake_croissants.py` | Program | Older file-in, file-out path: asks the questions for one par-baked file and writes <name>.baked.json. importing.py and baking.py borrow parts of it. |
+| `models.py` | Module | The 12 database tables and the schema version. |
+| `database.py` | Module | Opens SQLite, MySQL or PostgreSQL from a URL, and migrates an older schema forward. |
+| `importing.py` | Module | --import: reads par-baked Croissants into files, columns and measurements, and suggests a machine. |
+| `seeding.py` | Module | --seed: reads finished Croissants, field dictionaries and documentation in, unconfirmed. |
+| `outstanding.py` | Module | What each file still needs, what other datasets offer, and recording answers. |
+| `transfer.py` | Module | Changes a file's machine, carrying its answers, and copies answers between datasets. |
+| `baking.py` | Module | Writes finished Croissants, per file and per dataset, with Markdown. |
+| `notes.py` | Module | Finds NOTE: markers in Croissant files and in the database. |
+| `questions.py` | Module | The dataset-level question catalogue, and descriptions of measurements. |
+| `parbake_link.py` | Module | Puts parbake on the import path and re-exports its markers, output folder names and Markdown renderer. |
+| `tests/test_bakery.py` | Test | The screens, through Textual's headless driver. |
+| `tests/test_bake_croissants.py` | Test | The older file-in, file-out path. |
+| `tests/test_database.py` | Test | Tables, constraints, cascades and migrations. |
+| `tests/test_importing.py` | Test | Reading parbake output. |
+| `tests/test_seeding.py` | Test | Reading finished work. |
+| `tests/test_outstanding.py` | Test | What is asked, and what is offered. |
+| `tests/test_transfer.py` | Test | Changing a file's machine, and copying answers. |
+| `tests/test_baking.py` | Test | Writing Croissants, including validation with mlcroissant. |
+| `tests/test_notes.py` | Test | Finding notes. |
+| `README.md` | Documentation | How to run bakery, its screens and rules, tests, and known gaps. |
+| `docs/pipeline_map.html` | Documentation | Pipeline map page: data flow diagram, guarantees, keys, import grid, and text for Claude chat. |
+| `docs/pipeline_flow.svg` | Documentation | The data flow diagram as a standalone SVG, for editing. |
+| `docs/for_claude_chat.md` | Documentation | Plain-text description and Mermaid diagram of bakery. |
+| `pyproject.toml` | Configuration | Dependencies, optional database drivers and validator, and pytest settings. |
+| `.gitignore` | Configuration | Excludes virtual environments, caches, working databases and baked/. |
+| `parbaked_croissants/*.parbaked.json` | Input | Par-baked Croissants written by parbake. Read by --import. |
+| `*.croissant.json` | Input | Finished Croissants written by hand. Read by --seed. |
+| `*_field_dictionary*.csv` | Input | Field dictionaries with FIELD, type, UNIT and MEANING columns. Read by --seed. |
+| `*_documentation*.md` | Input | Dataset documentation; its System section gives the machine's hardware. Read by --seed. |
+| `bakery.sqlite` | Working state | Default database in the working directory: machines, datasets, files and every answer. Not committed. |
+| `<out>/<file>.baked.json` | Output | Croissant for one file, with the data's sha256. Keeps the par-baked marker until nothing is outstanding. <out> defaults to baked/. |
+| `<out>/<file>.baked.md` | Output | Markdown rendering of the file's Croissant. |
+| `<out>/<DATASET>.baked.json` | Output | Croissant for the dataset's whole series, as a cr:FileSet. |
+| `<out>/<DATASET>.baked.md` | Output | Markdown rendering of the dataset's Croissant. |
+
 
 `parbake_link.py` is the only module that reaches into parbake. Everything
 borrowed -- the par-baked markers, the output directory names, the Markdown
@@ -401,7 +482,7 @@ renderer -- comes through it, so a rename there is a one-line change here.
 
     cd bakery && pytest
 
-242 tests.
+260 tests.
 
 | file | count | covers |
 |---|---|---|
@@ -410,9 +491,10 @@ renderer -- comes through it, so a rename there is a one-line change here.
 | `test_baking.py` | 39 | writing both shapes, and validation |
 | `test_outstanding.py` | 25 | what is asked, and what is offered |
 | `test_seeding.py` | 24 | reading finished work in |
-| `test_bakery.py` | 23 | the screens, through Textual's headless driver |
+| `test_bakery.py` | 27 | the screens, through Textual's headless driver |
 | `test_importing.py` | 22 | reading parbake output in |
 | `test_notes.py` | 20 | finding notes |
+| `test_transfer.py` | 14 | changing a machine, copying answers |
 
 Everything deciding *what* to ask lives in `outstanding.py` and is tested without
 a terminal. The screens are tested with Textual's headless driver. Several tests

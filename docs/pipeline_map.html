@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bakery Pipeline Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #F2F4F7;
+    --surface: #FFFFFF;
+    --surface-2: #E9EDF2;
+    --ink: #17212C;
+    --muted: #5A6673;
+    --rule: #C9D1D9;
+    --rule-strong: #9AA6B2;
+    --accent: #2656A6;
+    --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0F151C;
+      --surface: #17202A;
+      --surface-2: #1D2833;
+      --ink: #DDE5EC;
+      --muted: #8E9BA8;
+      --rule: #2D3A47;
+      --rule-strong: #4A5968;
+      --accent: #8AB0F0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0F151C;
+    --surface: #17202A;
+    --surface-2: #1D2833;
+    --ink: #DDE5EC;
+    --muted: #8E9BA8;
+    --rule: #2D3A47;
+    --rule-strong: #4A5968;
+    --accent: #8AB0F0;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    padding-inline: 24px;
+    padding-block: 40px 72px;
+  }
+  main { max-width: 1180px; margin: 0 auto; display: grid; gap: 56px; }
+  header { display: grid; gap: 12px; max-width: 70ch; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); }
+  h1, h2 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -0.005em; }
+  h1 { font-size: 2.5rem; line-height: 1.1; }
+  h2 { font-size: 1.55rem; line-height: 1.2; }
+  p { margin: 0; }
+  .lede { color: var(--muted); font-size: 1.05rem; max-width: 66ch; }
+  code { font-family: var(--font-mono); font-size: 0.92em; }
+  section { display: grid; gap: 16px; }
+  .section-intro { color: var(--muted); max-width: 70ch; }
+
+  figure { margin: 0; display: grid; gap: 12px; }
+  .scroll { overflow-x: auto; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding-block: 16px; }
+  .scroll svg { display: block; width: 100%; min-width: 960px; height: auto; color: var(--ink); }
+  figcaption { color: var(--muted); font-size: 0.9rem; max-width: 80ch; }
+  figcaption strong { color: var(--ink); font-weight: 600; }
+
+  .node { fill: var(--surface); stroke: var(--rule-strong); stroke-width: 1; }
+  .group { fill: var(--surface-2); stroke: var(--rule-strong); stroke-width: 1; }
+  .person { fill: var(--ground); stroke: var(--accent); stroke-width: 1.25; stroke-dasharray: 7 5; }
+  .table-row { fill: var(--surface); stroke: var(--rule); stroke-width: 1; }
+  .folder { fill: none; stroke: var(--rule-strong); stroke-width: 1; stroke-dasharray: 2 4; }
+  .edge { fill: none; stroke: var(--muted); stroke-width: 1.25; }
+  .edge-accent { stroke: var(--accent); }
+  .t-name { font-family: var(--font-mono); font-size: 12px; font-weight: 600; fill: var(--ink); }
+  .t-title { font-family: var(--font-body); font-size: 13px; font-weight: 600; fill: var(--ink); }
+  .t-sub { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+  .t-file { font-family: var(--font-mono); font-size: 11px; fill: var(--ink); }
+  .t-table { font-family: var(--font-mono); font-size: 11px; font-weight: 500; fill: var(--ink); }
+  .t-cluster { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; fill: var(--muted); }
+  .t-region { font-family: var(--font-mono); font-size: 11px; font-weight: 500; fill: var(--accent); }
+  .t-label { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+  .t-label-accent { font-family: var(--font-body); font-size: 11px; fill: var(--accent); }
+  .t-key { font-family: var(--font-mono); font-size: 11px; font-weight: 600; fill: var(--accent); }
+  .m-ink path { fill: var(--muted); }
+  .m-accent path { fill: var(--accent); }
+
+  .properties { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px; }
+  .property { display: grid; gap: 8px; align-content: start; border-top: 2px solid var(--ink); padding-top: 12px; }
+  .property h3 { margin: 0; font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .property ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  .property li::marker { color: var(--rule-strong); }
+
+  .matrix-wrap { overflow-x: auto; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  table.matrix { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .matrix th, .matrix td { border-bottom: 1px solid var(--rule); }
+  .matrix thead th { vertical-align: bottom; padding: 12px 0 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--ink); }
+  .matrix thead th.col span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; white-space: nowrap; }
+  .matrix thead th.col { width: 30px; text-align: center; }
+  .matrix thead th.external span { color: var(--muted); }
+  .matrix th.corner { text-align: left; font-family: var(--font-body); font-size: 12px; color: var(--muted); padding-right: 16px; }
+  .matrix tbody th { text-align: left; padding: 7px 18px 7px 0; white-space: nowrap; font-weight: 400; }
+  .matrix tbody th .mname { font-family: var(--font-mono); font-size: 13px; font-weight: 600; display: block; }
+  .matrix tbody th .mrole { font-size: 12px; color: var(--muted); display: block; }
+  .matrix td { text-align: center; width: 30px; padding: 0; }
+  .matrix td.diagonal { background: var(--surface-2); }
+  .matrix td.first-external, .matrix th.first-external { border-left: 1px solid var(--rule-strong); }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 2px; background: var(--accent); vertical-align: middle; }
+  .dot.external { background: var(--rule-strong); }
+  .matrix tfoot th, .matrix tfoot td { padding: 10px 0; font-size: 12px; color: var(--muted); border-bottom: none; }
+  .matrix tfoot th { text-align: left; font-weight: 500; }
+
+  .keys { width: 100%; border-collapse: collapse; }
+  .keys-wrap { overflow-x: auto; }
+  .keys th, .keys td { text-align: left; padding: 8px 16px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  .keys th { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .keys td:first-child { font-family: var(--font-mono); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .keys td:nth-child(2) { white-space: nowrap; }
+
+  .paste { display: grid; gap: 12px; }
+  .paste-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  button { font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ground); background: var(--ink); border: 0; border-radius: 4px; padding: 8px 16px; cursor: pointer; }
+  button:hover { background: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  #copy-status { color: var(--muted); font-size: 14px; }
+  pre { margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 18px 20px; overflow-x: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; color: var(--ink); max-height: 520px; }
+
+  @media (max-width: 640px) { h1 { font-size: 2rem; } body { padding-block: 28px 56px; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="eyebrow">bakery · architecture</span>
+    <h1>bakery pipeline map</h1>
+    <p class="lede">bakery takes the par-baked Croissants parbake writes, asks a person what a machine cannot know, records every answer in a database, and writes finished Croissants back out. An answer given once is offered wherever the same column appears again.</p>
+  </header>
+
+  <section aria-labelledby="flow-heading">
+    <h2 id="flow-heading">Where data comes from, and where answers go</h2>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1100 720" role="img" aria-label="bakery reads parbake output with importing.py and finished work with seeding.py into a database of machines, datasets, files and answers. A person working in bakery.py reads questions and offers from the database and writes confirmed answers back. baking.py reads the database and writes finished Croissants, and notes.py reads the notes in them.">
+          <defs>
+            <marker id="arrow" class="m-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="arrow-accent" class="m-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <!-- inputs -->
+          <rect class="node" x="16" y="220" width="150" height="100" rx="3"/>
+          <text class="t-title" x="91" y="244" text-anchor="middle">parbake output</text>
+          <text class="t-file" x="91" y="266" text-anchor="middle">parbaked_croissants/</text>
+          <text class="t-file" x="91" y="281" text-anchor="middle">*.parbaked.json</text>
+          <text class="t-sub" x="91" y="303" text-anchor="middle">.txt and .md: recorded only</text>
+
+          <rect class="node" x="190" y="240" width="160" height="60" rx="3"/>
+          <text class="t-name" x="270" y="262" text-anchor="middle">importing.py</text>
+          <text class="t-sub" x="270" y="278" text-anchor="middle">--import: files, columns,</text>
+          <text class="t-sub" x="270" y="291" text-anchor="middle">measurements, machine guess</text>
+          <line class="edge" x1="166" y1="270" x2="188" y2="270" marker-end="url(#arrow)"/>
+          <line class="edge" x1="350" y1="270" x2="398" y2="270" marker-end="url(#arrow)"/>
+
+          <rect class="node" x="16" y="370" width="150" height="120" rx="3"/>
+          <text class="t-title" x="91" y="394" text-anchor="middle">finished work</text>
+          <text class="t-file" x="91" y="416" text-anchor="middle">*.croissant.json</text>
+          <text class="t-file" x="91" y="431" text-anchor="middle">*_field_dictionary.csv</text>
+          <text class="t-file" x="91" y="446" text-anchor="middle">*_documentation*.md</text>
+          <text class="t-sub" x="91" y="470" text-anchor="middle">work already done by hand</text>
+
+          <rect class="node" x="190" y="400" width="160" height="60" rx="3"/>
+          <text class="t-name" x="270" y="422" text-anchor="middle">seeding.py</text>
+          <text class="t-sub" x="270" y="438" text-anchor="middle">--seed: answers, units,</text>
+          <text class="t-sub" x="270" y="451" text-anchor="middle">hardware; none confirmed</text>
+          <line class="edge" x1="166" y1="430" x2="188" y2="430" marker-end="url(#arrow)"/>
+          <line class="edge" x1="350" y1="430" x2="398" y2="430" marker-end="url(#arrow)"/>
+
+          <rect class="node" x="16" y="560" width="334" height="60" rx="3"/>
+          <text class="t-name" x="183" y="582" text-anchor="middle">parbake_link.py</text>
+          <text class="t-sub" x="183" y="598" text-anchor="middle">parbake's markers, output folder names and Markdown renderer,</text>
+          <text class="t-sub" x="183" y="611" text-anchor="middle">used by five modules; nothing else reaches into parbake</text>
+
+          <!-- database -->
+          <rect class="group" x="380" y="40" width="280" height="460" rx="4"/>
+          <text class="t-name" x="400" y="64">database.py · models.py</text>
+          <text class="t-sub" x="400" y="80">SQLite by default; MySQL or PostgreSQL by URL</text>
+
+          <text class="t-cluster" x="400" y="106">THE MACHINE</text>
+          <rect class="table-row" x="400" y="112" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="128">machines</text>
+          <text class="t-sub" x="630" y="128" text-anchor="end">by name</text>
+          <rect class="table-row" x="400" y="142" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="158">machine_iterations</text>
+          <text class="t-sub" x="630" y="158" text-anchor="end">hardware, by date</text>
+          <rect class="table-row" x="400" y="172" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="188">machine_partitions</text>
+          <text class="t-sub" x="630" y="188" text-anchor="end">per kind of node</text>
+
+          <text class="t-cluster" x="400" y="222">THE DATA</text>
+          <rect class="table-row" x="400" y="228" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="244">datasets</text>
+          <text class="t-sub" x="630" y="244" text-anchor="end">MACHINE_KIND</text>
+          <rect class="table-row" x="400" y="258" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="274">source_files</text>
+          <text class="t-sub" x="630" y="274" text-anchor="end">one par-baked file</text>
+          <rect class="table-row" x="400" y="288" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="304">file_fields</text>
+          <text class="t-sub" x="630" y="304" text-anchor="end">columns, measured</text>
+          <rect class="table-row" x="400" y="318" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="334">derived_files</text>
+          <text class="t-sub" x="630" y="334" text-anchor="end">.txt, .md, not read</text>
+
+          <text class="t-cluster" x="400" y="368">WHAT A PERSON SAID</text>
+          <rect class="table-row" x="400" y="374" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="390">field_docs</text>
+          <text class="t-sub" x="630" y="390" text-anchor="end">per dataset and column</text>
+          <rect class="table-row" x="400" y="404" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="420">dataset_answers</text>
+          <text class="t-sub" x="630" y="420" text-anchor="end">licence, citation</text>
+          <rect class="table-row" x="400" y="434" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="450">enumerations</text>
+          <text class="t-sub" x="630" y="450" text-anchor="end">decoding tables</text>
+          <rect class="table-row" x="400" y="464" width="240" height="24" rx="2"/>
+          <text class="t-table" x="410" y="480">enumeration_values</text>
+          <text class="t-sub" x="630" y="480" text-anchor="end">code and meaning</text>
+
+          <!-- the person -->
+          <rect class="person" x="740" y="40" width="344" height="460" rx="6"/>
+          <text class="t-region" x="754" y="60">a person, in bakery.py</text>
+
+          <rect class="node" x="760" y="74" width="304" height="44" rx="3"/>
+          <text class="t-name" x="776" y="93">outstanding.py</text>
+          <text class="t-sub" x="776" y="109">what is unanswered; offers from other datasets</text>
+
+          <rect class="node" x="760" y="134" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="156">files</text>
+          <text class="t-sub" x="820" y="156">queue, least finished first</text>
+
+          <rect class="node" x="760" y="178" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="200">machine</text>
+          <text class="t-sub" x="840" y="200">confirm it; change it</text>
+          <text class="t-key" x="1050" y="200" text-anchor="end">M</text>
+
+          <rect class="node" x="760" y="222" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="244">columns</text>
+          <text class="t-sub" x="840" y="244">measurements beside each question</text>
+
+          <rect class="node" x="760" y="266" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="288">review</text>
+          <text class="t-sub" x="840" y="288">every column, editable</text>
+          <text class="t-key" x="1050" y="288" text-anchor="end">a</text>
+
+          <rect class="node" x="760" y="310" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="332">copy in</text>
+          <text class="t-sub" x="840" y="332">from another dataset; you choose</text>
+          <text class="t-key" x="1050" y="332" text-anchor="end">c</text>
+
+          <rect class="node" x="760" y="354" width="304" height="36" rx="3"/>
+          <text class="t-title" x="776" y="376">notes</text>
+          <text class="t-sub" x="840" y="376">everything flagged for later</text>
+          <text class="t-key" x="1050" y="376" text-anchor="end">n</text>
+
+          <text class="t-sub" x="776" y="420">transfer.py moves a file between machines</text>
+          <text class="t-sub" x="776" y="434">and copies answers between datasets.</text>
+          <text class="t-sub" x="776" y="456">Every answer is written as it is given.</text>
+
+          <line class="edge" x1="660" y1="240" x2="738" y2="240" marker-end="url(#arrow)"/>
+          <text class="t-label" x="700" y="256" text-anchor="middle">questions,</text>
+          <text class="t-label" x="700" y="269" text-anchor="middle">offers</text>
+
+          <line class="edge edge-accent" x1="740" y1="400" x2="662" y2="400" marker-end="url(#arrow-accent)"/>
+          <text class="t-label-accent" x="700" y="416" text-anchor="middle">confirmed</text>
+          <text class="t-label-accent" x="700" y="429" text-anchor="middle">answers</text>
+
+          <!-- output -->
+          <line class="edge" x1="520" y1="500" x2="520" y2="558" marker-end="url(#arrow)"/>
+          <text class="t-label" x="530" y="533">reads</text>
+
+          <rect class="node" x="380" y="560" width="280" height="60" rx="3"/>
+          <text class="t-name" x="520" y="582" text-anchor="middle">baking.py</text>
+          <text class="t-sub" x="520" y="598" text-anchor="middle">--bake, or b: a Croissant per file and per dataset,</text>
+          <text class="t-sub" x="520" y="611" text-anchor="middle">marked unfinished until nothing is left</text>
+
+          <rect class="folder" x="740" y="530" width="344" height="170" rx="6"/>
+          <text class="t-file" x="754" y="550">&lt;out&gt;/</text>
+          <text class="t-file" x="754" y="580">&lt;file&gt;.baked.json   .baked.md</text>
+          <text class="t-sub" x="754" y="595">one date range, with a sha256</text>
+          <text class="t-file" x="754" y="620">&lt;DATASET&gt;.baked.json   .baked.md</text>
+          <text class="t-sub" x="754" y="635">the series, as a cr:FileSet</text>
+          <line class="edge" x1="660" y1="590" x2="738" y2="590" marker-end="url(#arrow)"/>
+          <text class="t-label" x="700" y="582" text-anchor="middle">writes</text>
+
+          <rect class="node" x="380" y="650" width="280" height="50" rx="3"/>
+          <text class="t-name" x="520" y="671" text-anchor="middle">notes.py</text>
+          <text class="t-sub" x="520" y="687" text-anchor="middle">--notes: every NOTE: in a directory of Croissants</text>
+          <line class="edge" x1="740" y1="675" x2="662" y2="675" marker-end="url(#arrow)"/>
+          <text class="t-label" x="700" y="668" text-anchor="middle">reads</text>
+        </svg>
+      </div>
+      <figcaption><strong>Only the person, inside the dashed blue outline, confirms anything.</strong> importing.py records measurements and suggests a machine without assigning one; seeding.py reads finished work in unconfirmed. The one blue arrow is the only place a confirmed answer enters the database. baking.py replaces the par-baked marker only when every answer a Croissant needs is confirmed.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="properties-heading">
+    <h2 id="properties-heading">What the design guarantees</h2>
+    <div class="properties">
+      <div class="property">
+        <h3>What counts as decided</h3>
+        <ul>
+          <li>An import suggests a machine from the filename and the <code>MACHINE_NAME</code> column, and assigns none.</li>
+          <li>Seeded answers are unconfirmed, and offered as defaults. A placeholder description is not seeded.</li>
+          <li>An offer from another dataset is shown, never applied on its own.</li>
+          <li>Copying takes only answers confirmed in the source. Where the target has a different confirmed answer, the person chooses.</li>
+        </ul>
+      </div>
+      <div class="property">
+        <h3>Keeping work</h3>
+        <ul>
+          <li>Every answer is written when given; stopping loses only the one being typed.</li>
+          <li><code>--import</code> and <code>--seed</code> can be re-run; they update rather than duplicate.</li>
+          <li>An older database is migrated forward with its contents; one from a later version is refused.</li>
+          <li>Changing a file's machine carries its answers to the new dataset.</li>
+          <li>One process, one session: there is no parallelism, and SQLite is the default store.</li>
+        </ul>
+      </div>
+      <div class="property">
+        <h3>Output</h3>
+        <ul>
+          <li>Two shapes: one file with a computed sha256, and the whole series as a <code>cr:FileSet</code>.</li>
+          <li>Units and notes are appended to descriptions; decoding tables are linked from their columns.</li>
+          <li>A finished file passes <code>mlcroissant</code> in both shapes; an unfinished one keeps the par-baked marker and fails.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="keys-heading">
+    <h2 id="keys-heading">Commands and keys</h2>
+    <div class="keys-wrap">
+      <table class="keys">
+        <thead><tr><th scope="col">command or key</th><th scope="col">where</th><th scope="col">does</th></tr></thead>
+        <tbody>
+          <tr><td>--import DIR</td><td>command line</td><td>reads a parbake output directory</td></tr>
+          <tr><td>--seed PATH...</td><td>command line</td><td>reads finished Croissants, field dictionaries and documentation</td></tr>
+          <tr><td>--bake --out DIR</td><td>command line</td><td>writes every Croissant, then stops</td></tr>
+          <tr><td>--notes PATH...</td><td>command line</td><td>lists every note in the Croissants under a path, then stops</td></tr>
+          <tr><td>--database URL</td><td>command line</td><td>chooses the database; default <code>./bakery.sqlite</code>, or <code>BAKERY_DATABASE_URL</code></td></tr>
+          <tr><td>enter</td><td>file list</td><td>works on a file: its machine first, then its columns</td></tr>
+          <tr><td>a · M · c · b · n · m</td><td>file list</td><td>review · change machine · copy answers in · write out · notes · machines</td></tr>
+          <tr><td>ctrl+s · ctrl+a · ctrl+k · ctrl+j</td><td>columns</td><td>save · accept the offer · next · previous</td></tr>
+          <tr><td>enter · m · c</td><td>review</td><td>edit a column · change machine · copy answers in</td></tr>
+          <tr><td>u · k · a · x · esc</td><td>differences</td><td>use the copy · keep current · use for all · keep all · abandon</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="imports-heading">
+    <h2 id="imports-heading">Who imports whom</h2>
+    <p class="section-intro">Each row is a module; a mark means it imports the module named at the top of that column. Ordered so every mark sits right of the shaded diagonal: no module imports one listed above it.</p>
+    <figure>
+      <div class="matrix-wrap">
+        <table class="matrix" id="import-matrix" aria-describedby="matrix-caption"></table>
+      </div>
+      <figcaption id="matrix-caption"><strong>models.py sits under everything that touches the database</strong>, and parbake_link.py is the only module that reaches into parbake. bake_croissants.py is the older file-in, file-out path: importing.py borrows its directory search, and baking.py its checksum and finished <code>conformsTo</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="paste-heading">
+    <h2 id="paste-heading">Paste into Claude chat</h2>
+    <p class="section-intro">A description and a Mermaid diagram of the same architecture, as plain text.</p>
+    <div class="paste">
+      <div class="paste-bar">
+        <button type="button" id="copy-button">Copy text</button>
+        <span id="copy-status" role="status"></span>
+      </div>
+<pre id="paste-text">Here is the architecture of bakery, a Python tool. Use it as context.
+
+bakery finishes par-baked Croissant metadata files written by parbake. It reads
+them into a database, asks a person the questions a machine cannot answer (which
+machine the data came from; what each column means, its type, unit and any note;
+licence, citation and responsible-AI answers), and writes finished Croissants.
+Answers are stored per (dataset, column), where a dataset is MACHINE_KIND, and an
+answer given once is offered wherever the same column appears again.
+
+Run: python3 bakery.py [--import DIR] [--seed PATH...] [--database URL]
+     python3 bakery.py --bake --out DIR
+     python3 bakery.py --notes PATH...
+
+Rules:
+- An import suggests a machine and assigns none.
+- Seeded answers (from finished Croissants, field dictionaries, documentation)
+  are unconfirmed and offered as defaults; placeholder descriptions are skipped.
+- Offers from other datasets are shown, never applied on their own.
+- Copying answers between datasets takes only confirmed source answers, fills
+  gaps, and asks about each differing confirmed answer.
+- Changing a file's machine carries its answers to the new dataset.
+- Every answer is saved as it is given. Import and seed can be re-run.
+- Output: a Croissant per file (with sha256) and per dataset (cr:FileSet).
+  The par-baked marker is removed only when nothing is outstanding; finished
+  files pass mlcroissant, unfinished ones fail.
+- One process; SQLite by default, MySQL or PostgreSQL by URL. Schema
+  migrations are forward-only.
+
+Modules:
+  bakery.py          the Textual interface and command line
+  models.py          12 tables: machines, iterations, partitions, datasets,
+                     source files, file fields, field docs, dataset answers,
+                     enumerations and values, derived files, schema version
+  database.py        opens the database; migrates older schemas
+  importing.py       reads parbake output: files, columns, measurements
+  seeding.py         reads finished work in, unconfirmed
+  outstanding.py     what is unanswered; what other datasets can offer
+  transfer.py        change a file's machine; copy answers between datasets
+  baking.py          writes finished Croissants
+  notes.py           finds NOTE: markers across Croissant files
+  questions.py       the dataset-level question catalogue
+  parbake_link.py    the only link to parbake
+  bake_croissants.py older file-in, file-out path
+
+```mermaid
+flowchart LR
+  pb["parbake output&lt;br/&gt;*.parbaked.json"] --&gt; imp["importing.py&lt;br/&gt;--import"]
+  fw["finished work&lt;br/&gt;*.croissant.json, dictionaries, docs"] --&gt; seed["seeding.py&lt;br/&gt;--seed, unconfirmed"]
+
+  subgraph db["database (models.py, database.py)"]
+    mach["machines, iterations, partitions"]
+    data["datasets, source_files, file_fields"]
+    said["field_docs, dataset_answers, enumerations"]
+  end
+
+  imp --&gt; data
+  seed --&gt; said
+  seed --&gt; mach
+
+  subgraph person["a person, in bakery.py"]
+    out["outstanding.py&lt;br/&gt;unanswered + offers"]
+    screens["files, machine, columns,&lt;br/&gt;review, copy in, notes"]
+    tr["transfer.py&lt;br/&gt;change machine, copy answers"]
+  end
+
+  db --&gt;|questions, offers| out
+  out --&gt; screens
+  screens --&gt;|confirmed answers| said
+  tr --&gt; said
+
+  db --&gt;|reads| bake["baking.py&lt;br/&gt;--bake"]
+  bake --&gt; files["&lt;file&gt;.baked.json, &lt;DATASET&gt;.baked.json"]
+  files --&gt;|NOTE: markers| notes["notes.py&lt;br/&gt;--notes"]
+  link["parbake_link.py"] -.-&gt; imp
+  link -.-&gt; seed
+  link -.-&gt; bake
+```</pre>
+    </div>
+  </section>
+</main>
+
+<script>
+  (function () {
+    var modules = [
+      ["bakery", "interface, command line"],
+      ["baking", "writes Croissants"],
+      ["transfer", "machine change, copying"],
+      ["importing", "reads parbake output"],
+      ["seeding", "reads finished work"],
+      ["bake_croissants", "older file-in, file-out path"],
+      ["outstanding", "unanswered, and offers"],
+      ["notes", "finds notes"],
+      ["database", "opens, migrates"],
+      ["questions", "question catalogue"],
+      ["parbake_link", "the link to parbake"],
+      ["models", "the tables"]
+    ];
+    var external = ["sqlalchemy", "textual", "parbake"];
+    var imports = {
+      bakery: ["baking", "database", "importing", "models", "notes", "outstanding", "questions", "seeding", "transfer", "sqlalchemy", "textual"],
+      baking: ["bake_croissants", "importing", "models", "outstanding", "parbake_link", "questions", "sqlalchemy"],
+      transfer: ["models", "outstanding", "sqlalchemy"],
+      importing: ["bake_croissants", "models", "parbake_link", "questions", "sqlalchemy"],
+      seeding: ["models", "parbake_link", "questions", "sqlalchemy"],
+      bake_croissants: ["parbake_link", "questions"],
+      outstanding: ["models", "questions", "sqlalchemy"],
+      notes: ["models", "sqlalchemy"],
+      database: ["models", "sqlalchemy"],
+      questions: ["parbake_link"],
+      parbake_link: ["parbake"],
+      models: ["sqlalchemy"]
+    };
+
+    var table = document.getElementById("import-matrix");
+    var names = modules.map(function (m) { return m[0]; });
+    var columns = names.concat(external);
+
+    var thead = document.createElement("thead");
+    var headRow = document.createElement("tr");
+    var corner = document.createElement("th");
+    corner.className = "corner";
+    corner.scope = "col";
+    corner.textContent = "module imports →";
+    headRow.appendChild(corner);
+    columns.forEach(function (name, index) {
+      var th = document.createElement("th");
+      th.scope = "col";
+      th.className = "col" + (index >= names.length ? " external" : "") + (index === names.length ? " first-external" : "");
+      var span = document.createElement("span");
+      span.textContent = name;
+      th.appendChild(span);
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    var counts = columns.map(function () { return 0; });
+    var tbody = document.createElement("tbody");
+    modules.forEach(function (module, row) {
+      var tr = document.createElement("tr");
+      var th = document.createElement("th");
+      th.scope = "row";
+      th.innerHTML = '<span class="mname"></span><span class="mrole"></span>';
+      th.querySelector(".mname").textContent = module[0];
+      th.querySelector(".mrole").textContent = module[1];
+      tr.appendChild(th);
+      columns.forEach(function (name, index) {
+        var td = document.createElement("td");
+        if (index === row) td.className = "diagonal";
+        if (index === names.length) td.className = "first-external";
+        if (imports[module[0]].indexOf(name) !== -1) {
+          var dot = document.createElement("span");
+          dot.className = "dot" + (index >= names.length ? " external" : "");
+          dot.setAttribute("role", "img");
+          dot.setAttribute("aria-label", module[0] + " imports " + name);
+          td.appendChild(dot);
+          counts[index] += 1;
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    var tfoot = document.createElement("tfoot");
+    var footRow = document.createElement("tr");
+    var footLabel = document.createElement("th");
+    footLabel.scope = "row";
+    footLabel.textContent = "imported by";
+    footRow.appendChild(footLabel);
+    counts.forEach(function (count, index) {
+      var td = document.createElement("td");
+      if (index === names.length) td.className = "first-external";
+      td.textContent = count ? String(count) : "";
+      footRow.appendChild(td);
+    });
+    tfoot.appendChild(footRow);
+    table.appendChild(tfoot);
+
+    var button = document.getElementById("copy-button");
+    var status = document.getElementById("copy-status");
+    var text = document.getElementById("paste-text");
+    function selectText() {
+      var range = document.createRange();
+      range.selectNodeContents(text);
+      var selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    button.addEventListener("click", function () {
+      var value = text.textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(function () {
+          status.textContent = "Copied.";
+        }, function () {
+          selectText();
+          status.textContent = "Text selected. Press Ctrl+C or Cmd+C to copy.";
+        });
+      } else {
+        selectText();
+        status.textContent = "Text selected. Press Ctrl+C or Cmd+C to copy.";
+      }
+    });
+  })();
+</script>
+</body>
+</html>
