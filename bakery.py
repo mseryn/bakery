@@ -70,6 +70,7 @@ from outstanding import (
     record_field_answer,
 )
 from questions import DATA_TYPE_CHOICES
+from transfer import apply_copy, change_machine, copy_candidates, describe_values, plan_copy
 from seeding import seed_from
 
 
@@ -85,6 +86,8 @@ class FileListScreen(Screen):
     BINDINGS = [
         Binding("enter", "work", "Work on this file", priority=True),
         Binding("a", "review", "Review everything set"),
+        Binding("M", "change_machine", "Change machine"),
+        Binding("c", "copy_answers", "Copy answers in"),
         Binding("b", "bake", "Write it out"),
         Binding("n", "notes", "Notes"),
         Binding("r", "refresh", "Refresh"),
@@ -208,6 +211,31 @@ class FileListScreen(Screen):
         self.app.push_screen(ReviewScreen(source_file),
                              lambda _: self.action_refresh())
 
+    def action_change_machine(self):
+        source_file = self.selected_file()
+        if source_file is None:
+            return
+        if source_file.dataset is None:
+            self.action_work()
+            return
+        self.working_on = source_file
+        self.app.push_screen(MachineScreen(source_file, changing=True), self.after_change)
+
+    def after_change(self, report):
+        self.action_refresh()
+        if report:
+            self.app.push_screen(ReportScreen(report))
+
+    def action_copy_answers(self):
+        source_file = self.selected_file()
+        if source_file is None:
+            return
+        if source_file.dataset is None:
+            self.app.notify("Say which machine this came from first.", severity="warning")
+            return
+        self.working_on = source_file
+        self.app.push_screen(CopySourceScreen(source_file), self.after_change)
+
     def action_notes(self):
         self.app.push_screen(NotesScreen())
 
@@ -264,14 +292,19 @@ class MachineScreen(Screen):
         Binding("ctrl+s", "confirm", "Confirm", priority=True),
     ]
 
-    def __init__(self, source_file):
+    def __init__(self, source_file, changing=False):
         super().__init__()
         self.source_file = source_file
+        # Changing moves a file that already has a machine, answers and all; it
+        # dismisses with the lines saying what moved.
+        self.changing = changing
 
     def compose(self) -> ComposeResult:
         yield Header()
         with VerticalScroll():
-            yield Static(f"  {self.source_file.name}", id="title")
+            title = (f"  Change the machine for {self.source_file.name}"
+                     if self.changing else f"  {self.source_file.name}")
+            yield Static(title, id="title")
             yield Static(id="evidence")
             yield Label("  Machines already named (enter to pick one):")
             yield OptionList(id="machines")
@@ -299,7 +332,14 @@ class MachineScreen(Screen):
                 f"{machine.name}"
                 + (f"  ({profile.vendor}, {len(profile.partitions)} partition(s))"
                    if profile else "  (no hardware recorded yet)"))
-        if suggestion:
+        if self.changing and self.source_file.machine is not None:
+            current = self.source_file.machine.name
+            self.query_one("#evidence", Static).update(
+                str(self.query_one("#evidence", Static).render())
+                + f"\n  Now confirmed as: {current}, in {self.source_file.dataset.name}.\n"
+                  "  Its answers follow it to the machine you choose.")
+            self.query_one("#typed", Input).value = current
+        elif suggestion:
             self.query_one("#typed", Input).value = suggestion
 
     @on(OptionList.OptionSelected)
@@ -315,13 +355,17 @@ class MachineScreen(Screen):
         name = self.query_one("#typed", Input).value.strip()
         if not name:
             return
+        if self.changing:
+            change = change_machine(self.app.session, self.source_file, name)
+            self.dismiss(change.lines())
+            return
         machine, dataset = confirm_machine(self.app.session, self.source_file, name)
         self.app.notify(f"{self.source_file.name} is {machine.name}; "
                         f"its columns belong to {dataset.name}.")
         self.dismiss(True)
 
     def action_cancel(self):
-        self.dismiss(False)
+        self.dismiss(None if self.changing else False)
 
 
 # --- the columns -----------------------------------------------------------
@@ -499,6 +543,8 @@ class ReviewScreen(Screen):
 
     BINDINGS = [
         Binding("enter", "edit", "Edit this column", priority=True),
+        Binding("m", "change_machine", "Change machine"),
+        Binding("c", "copy_answers", "Copy answers in"),
         Binding("escape", "back", "Back"),
     ]
 
@@ -542,8 +588,10 @@ class ReviewScreen(Screen):
 
         coverage = coverage_of(self.app.session, self.source_file)
         with_notes = sum(1 for item in self.work if item.note)
+        dataset = self.source_file.dataset
         self.query_one("#title", Static).update(
-            f"  {self.source_file.name}\n"
+            f"  {self.source_file.name}   "
+            f"{dataset.machine.name if dataset else ''} / {dataset.name if dataset else ''}\n"
             f"  {coverage.describe()}"
             + (f", {with_notes} with a note" if with_notes else "")
             + "  --  enter to edit any of them")
@@ -581,8 +629,218 @@ class ReviewScreen(Screen):
             FieldScreen(self.source_file, include_settled=True, start_at=name),
             lambda _: self.action_refresh())
 
+    def action_change_machine(self):
+        self.app.push_screen(MachineScreen(self.source_file, changing=True),
+                             self.after_change)
+
+    def action_copy_answers(self):
+        self.app.push_screen(CopySourceScreen(self.source_file), self.after_change)
+
+    def after_change(self, report):
+        self.action_refresh()
+        if report:
+            self.app.push_screen(ReportScreen(report))
+
     def action_back(self):
         self.dismiss(None)
+
+
+# --- corrections in bulk ---------------------------------------------------
+
+class ReportScreen(Screen):
+    """What a machine change or a copy did."""
+
+    BINDINGS = [Binding("escape", "back", "Back"), Binding("enter", "back", "Back")]
+
+    def __init__(self, lines):
+        super().__init__()
+        self.lines = lines
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with VerticalScroll():
+            yield Static("\n" + "\n".join(f"  {line}" for line in self.lines), id="report")
+        yield Footer()
+
+    def action_back(self):
+        self.dismiss(None)
+
+
+class CopySourceScreen(Screen):
+    """Pick the dataset to copy answers from.
+
+    Every other dataset, most useful first: how many of this file's columns it
+    has confirmed answers for, and how many confirmed answers it has in all.
+    """
+
+    BINDINGS = [
+        Binding("enter", "choose", "Copy from this dataset", priority=True),
+        Binding("escape", "back", "Back"),
+    ]
+
+    def __init__(self, source_file):
+        super().__init__()
+        self.source_file = source_file
+        self.candidates = []
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Static(id="title")
+        yield DataTable(id="sources", cursor_type="row", zebra_stripes=True)
+        yield Footer()
+
+    def on_mount(self):
+        target = self.source_file.dataset
+        self.query_one("#title", Static).update(
+            f"  Copy answers into {target.name}, for the columns whose names match.\n"
+            "  Gaps are filled; where this dataset already has a different confirmed\n"
+            "  answer, you choose. Only answers confirmed in the source are copied.")
+        table = self.query_one("#sources", DataTable)
+        table.add_columns("dataset", "machine", "your columns it answers",
+                          "confirmed answers")
+        self.candidates = copy_candidates(self.app.session, target)
+        for dataset, matching, confirmed in self.candidates:
+            table.add_row(dataset.name, dataset.machine.name, str(matching), str(confirmed),
+                          key=str(dataset.id))
+
+    def chosen(self):
+        table = self.query_one("#sources", DataTable)
+        if not table.row_count:
+            return None
+        return self.candidates[table.cursor_row][0]
+
+    @on(DataTable.RowSelected)
+    def row_chosen(self, event):
+        self.action_choose()
+
+    def action_choose(self):
+        source = self.chosen()
+        if source is None:
+            return
+        plan = plan_copy(self.app.session, source, self.source_file.dataset)
+        self.app.push_screen(CopyPlanScreen(plan), self.after_plan)
+
+    def after_plan(self, report):
+        if report:
+            self.dismiss(report)
+
+    def action_back(self):
+        self.dismiss(None)
+
+
+class CopyPlanScreen(Screen):
+    """What the copy would do, before anything is written."""
+
+    BINDINGS = [
+        Binding("ctrl+s", "copy", "Copy", priority=True),
+        Binding("escape", "back", "Back, copy nothing"),
+    ]
+
+    def __init__(self, plan):
+        super().__init__()
+        self.plan = plan
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with VerticalScroll():
+            yield Static(id="plan")
+        yield Footer()
+
+    def on_mount(self):
+        lines = self.plan.lines()
+        if self.plan.differences:
+            lines += ["", f"  ctrl+s to copy; the {len(self.plan.differences)} difference(s) "
+                          "are shown one at a time first."]
+        else:
+            lines += ["", "  ctrl+s to copy."]
+        self.query_one("#plan", Static).update("\n" + "\n".join(f"  {line}" for line in lines))
+
+    def action_copy(self):
+        if self.plan.differences:
+            self.app.push_screen(DifferenceScreen(self.plan), self.after_choosing)
+        else:
+            self.dismiss(apply_copy(self.app.session, self.plan))
+
+    def after_choosing(self, finished):
+        if finished:
+            self.dismiss(apply_copy(self.app.session, self.plan))
+
+    def action_back(self):
+        self.dismiss(None)
+
+
+class DifferenceScreen(Screen):
+    """One difference at a time: keep what this dataset has, or take the copy.
+
+    Nothing is written until the last one is decided. Leaving part way through
+    abandons the whole copy.
+    """
+
+    BINDINGS = [
+        Binding("u", "use", "Use the copy"),
+        Binding("k", "keep", "Keep current"),
+        Binding("a", "use_all", "Use the copy for all remaining"),
+        Binding("x", "keep_all", "Keep all remaining"),
+        Binding("escape", "back", "Abandon the copy"),
+    ]
+
+    def __init__(self, plan):
+        super().__init__()
+        self.plan = plan
+        self.at = 0
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with VerticalScroll():
+            yield Static(id="difference")
+        yield Footer()
+
+    def on_mount(self):
+        self.show()
+
+    def show(self):
+        each = self.plan.differences[self.at]
+        where = "column" if each.kind == "column" else "dataset-level answer"
+        lines = [f"[{self.at + 1}/{len(self.plan.differences)}] {where} {each.name}",
+                 "",
+                 f"{self.plan.target.name} has now:"]
+        lines += [f"    {line}" for line in describe_values(each.current)]
+        lines += ["", f"copy from {self.plan.source.name} would set:"]
+        lines += [f"    {line}" for line in describe_values(each.incoming)]
+        lines += ["", "u use the copy    k keep current    a use the copy for all remaining"
+                      "    x keep all remaining"]
+        self.query_one("#difference", Static).update(
+            "\n" + "\n".join(f"  {line}" for line in lines))
+
+    def decide(self, take):
+        self.plan.differences[self.at].take_incoming = take
+        self.at += 1
+        if self.at >= len(self.plan.differences):
+            self.dismiss(True)
+        else:
+            self.show()
+
+    def decide_rest(self, take):
+        for each in self.plan.differences[self.at:]:
+            each.take_incoming = take
+        self.dismiss(True)
+
+    def action_use(self):
+        self.decide(True)
+
+    def action_keep(self):
+        self.decide(False)
+
+    def action_use_all(self):
+        self.decide_rest(True)
+
+    def action_keep_all(self):
+        self.decide_rest(False)
+
+    def action_back(self):
+        for each in self.plan.differences:
+            each.take_incoming = None
+        self.dismiss(False)
 
 
 class NotesScreen(Screen):

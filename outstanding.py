@@ -274,13 +274,12 @@ def coverage_of(session, source_file):
 
 # --- answering -------------------------------------------------------------
 
-def confirm_machine(session, source_file, machine_name, dataset_name=None):
-    """Settle which machine a file came from, and put it in a dataset.
+def dataset_for(session, source_file, machine_name, dataset_name=None):
+    """The machine and dataset a file belongs to under this machine name.
 
-    Confirming the machine is what attaches the file to a dataset, because a
-    dataset belongs to a machine and there is nowhere else for it to hang. The
-    dataset is named <MACHINE>_<KIND> to match how the finished files are named,
-    and an existing one is joined rather than a second being made.
+    Creates either if it does not exist yet, and attaches nothing. The dataset is
+    named <MACHINE>_<KIND> to match how the finished files are named, and an
+    existing one is joined rather than a second being made.
 
     Returns (machine, dataset).
     """
@@ -298,13 +297,28 @@ def confirm_machine(session, source_file, machine_name, dataset_name=None):
         dataset = Dataset(machine_id=found.id, name=name, kind=source_file.kind)
         session.add(dataset)
         session.flush()
+    return found, dataset
 
-    source_file.dataset_id = dataset.id
-    # The dates in the name suggest which iteration; it is recorded only when
-    # one actually covers them, and stays empty rather than being forced.
-    suggested = found.iteration_covering(source_file.covers_from or source_file.covers_to)
-    if suggested is not None:
-        source_file.iteration_id = suggested.id
+
+def date_to_iteration(source_file, machine):
+    """Record the iteration the file's dates fall in, or none if none covers them."""
+    source_file.iteration = machine.iteration_covering(
+        source_file.covers_from or source_file.covers_to)
+
+
+def confirm_machine(session, source_file, machine_name, dataset_name=None):
+    """Settle which machine a file came from, and put it in a dataset.
+
+    Confirming the machine is what attaches the file to a dataset, because a
+    dataset belongs to a machine and there is nowhere else for it to hang. To
+    change a machine already confirmed, see transfer.change_machine, which also
+    carries the file's answers across.
+
+    Returns (machine, dataset).
+    """
+    found, dataset = dataset_for(session, source_file, machine_name, dataset_name)
+    source_file.dataset = dataset
+    date_to_iteration(source_file, found)
     source_file.state = STATE_IN_PROGRESS
     source_file.updated_at = now()
     session.commit()

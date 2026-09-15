@@ -615,3 +615,144 @@ def test_the_notes_screen_says_how_to_make_one_when_there_are_none(database):
         assert "No notes recorded yet" in text
         assert "--notes" in text            # and where the other listing lives
     drive(database, body)
+
+
+# --- changing the machine, and copying answers in ---------------------------
+
+def test_the_machine_can_be_changed_from_the_review_screen(database):
+    from bakery import ReportScreen
+    with database.session() as session:
+        stored = a_file(session, name="METIS.logs_20260814_1", kind="logs", columns=("pod",))
+        _, wrong = confirm_machine(session, stored, "ThetaGPU")
+        record_field_answer(session, wrong, "pod", description="The pod.", data_type="sc:Text",
+                            source_file=stored)
+
+    async def body(app, pilot):
+        app.screen.action_review()
+        await pilot.pause()
+        await pilot.press("m")
+        await pilot.pause()
+        machine = app.screen
+        assert isinstance(machine, MachineScreen) and machine.changing
+        assert machine.query_one("#typed").value == "ThetaGPU"     # starts at the current one
+        assert "Now confirmed as: ThetaGPU" in shown(machine.query_one("#evidence"))
+
+        machine.query_one("#typed").value = "Metis"
+        machine.action_confirm()
+        await pilot.pause()
+        await pilot.pause()
+        assert isinstance(app.screen, ReportScreen)
+        report = shown(app.screen.query_one("#report"))
+        assert "THETAGPU_logs -> METIS_logs" in report
+        assert "column answers moved         1" in report
+    drive(database, body)
+
+    with database.session() as session:
+        stored = session.scalars(select(SourceFile)).one()
+        assert stored.dataset.name == "METIS_logs"
+        assert session.scalars(select(FieldDoc)).one().description == "The pod."
+
+
+def test_shift_m_on_the_file_list_changes_the_machine(database):
+    with database.session() as session:
+        stored = a_file(session)
+        confirm_machine(session, stored, "aurora")
+
+    async def body(app, pilot):
+        await pilot.press("M")
+        await pilot.pause()
+        assert isinstance(app.screen, MachineScreen) and app.screen.changing
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, FileListScreen)
+    drive(database, body)
+
+    with database.session() as session:
+        assert session.scalars(select(SourceFile)).one().dataset.name == "AURORA_DJC"
+
+
+def _two_datasets_to_copy_between(session):
+    columns = ("MACHINE_NAME", "START_TIMESTAMP", "NOTE")
+    source_file = a_file(session, name="ANL-ALCF-MACHINESTATUS-POLARIS_20220809_20221231",
+                         kind="MACHINESTATUS", columns=columns)
+    _, source = confirm_machine(session, source_file, "polaris")
+    for name in columns:
+        record_field_answer(session, source, name, description=f"{name} from Polaris.",
+                            data_type="sc:Text")
+    target_file = a_file(session, name="ANL-ALCF-MACHINESTATUS-AURORA_20250127_20251231",
+                         kind="MACHINESTATUS", columns=columns)
+    _, target = confirm_machine(session, target_file, "aurora")
+    record_field_answer(session, target, "NOTE", description="Aurora's own note column.",
+                        data_type="sc:Text")
+    return target_file
+
+
+def _open_copy_for_aurora(app):
+    table = app.screen.query_one("#files")
+    row = next(index for index in range(table.row_count)
+               if "AURORA" in str(table.get_row_at(index)[0]))
+    table.move_cursor(row=row)
+
+
+def test_copying_answers_in_fills_gaps_and_asks_about_differences(database):
+    from bakery import CopyPlanScreen, CopySourceScreen, DifferenceScreen, ReportScreen
+    with database.session() as session:
+        _two_datasets_to_copy_between(session)
+
+    async def body(app, pilot):
+        _open_copy_for_aurora(app)
+        await pilot.pause()
+        await pilot.press("c")
+        await pilot.pause()
+        assert isinstance(app.screen, CopySourceScreen)
+        first = app.screen.query_one("#sources").get_row_at(0)
+        assert first[0] == "POLARIS_MACHINESTATUS" and first[2] == "3"
+
+        await pilot.press("enter")
+        await pilot.pause()
+        assert isinstance(app.screen, CopyPlanScreen)
+        plan = shown(app.screen.query_one("#plan"))
+        assert "will be filled              2" in plan
+        assert "differ, you choose          1" in plan
+
+        await pilot.press("ctrl+s")
+        await pilot.pause()
+        assert isinstance(app.screen, DifferenceScreen)
+        difference = shown(app.screen.query_one("#difference"))
+        assert "column NOTE" in difference
+        assert "Aurora's own note column." in difference and "NOTE from Polaris." in difference
+
+        await pilot.press("k")
+        await pilot.pause()
+        await pilot.pause()
+        assert isinstance(app.screen, ReportScreen)
+        assert "columns filled                2" in shown(app.screen.query_one("#report"))
+    drive(database, body)
+
+    with database.session() as session:
+        aurora = session.scalar(select(Dataset).where(Dataset.name == "AURORA_MACHINESTATUS"))
+        by_name = {doc.field_name: doc for doc in aurora.field_docs}
+        assert by_name["MACHINE_NAME"].description == "MACHINE_NAME from Polaris."
+        assert by_name["MACHINE_NAME"].recorded_by == "copied from POLARIS_MACHINESTATUS"
+        assert by_name["NOTE"].description == "Aurora's own note column."     # kept
+
+
+def test_abandoning_a_copy_part_way_writes_nothing(database):
+    from bakery import DifferenceScreen
+    with database.session() as session:
+        _two_datasets_to_copy_between(session)
+
+    async def body(app, pilot):
+        _open_copy_for_aurora(app)
+        await pilot.pause()
+        for key in ("c", "enter", "ctrl+s"):
+            await pilot.press(key)
+            await pilot.pause()
+        assert isinstance(app.screen, DifferenceScreen)
+        await pilot.press("escape")
+        await pilot.pause()
+    drive(database, body)
+
+    with database.session() as session:
+        aurora = session.scalar(select(Dataset).where(Dataset.name == "AURORA_MACHINESTATUS"))
+        assert [doc.field_name for doc in aurora.field_docs] == ["NOTE"]
